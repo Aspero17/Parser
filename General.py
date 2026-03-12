@@ -11,7 +11,7 @@ import os
 API_ID = 24146111
 API_HASH = "dc7ef3f00ab268edd8fc8f46ec464456"
 
-SOURCE_CHANNELS = [-1002333785294]               # откуда парсим
+SOURCE_CHANNELS = [-1001754252633]               # откуда парсим
 TARGET_CHANNEL = -1001916023629                  # куда постим
 
 # Фразы, которые полностью удаляем из поста
