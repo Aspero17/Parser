@@ -167,7 +167,7 @@ async def cmd_listban(event):
     await event.reply(f"Запрещённые фразы ({len(BANNED_PHRASES)}):\n{lines}")
 
 # ──────────────────────────────────────────────
-# Запуск1
+# Запуск11
 # ──────────────────────────────────────────────
 
 async def main():
