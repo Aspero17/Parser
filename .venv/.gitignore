@@ -1,0 +1,14 @@
+# Личные и конфиденциальные файлы
+banned.json
+parser_session.session
+.env
+personal*
+*.personal
+*.token
+*.key
+
+# PyCharm и временные файлы
+.idea/
+*.iml
+__pycache__/
+*.pyc
