@@ -20,15 +20,25 @@ REMOVE_PHRASES = [
     "👉 Топор Live. Подписаться",
 ]
 
-# Путь к файлу с запрещёнными фразами
-BANNED_FILE = "banned.json"
+# Директория данных в Amvera (монтируется как /data)
+DATA_DIR = "/data"
+
+# Пути к файлам внутри /data (или локально в текущей папке, если /data нет)
+SESSION_NAME = "parser_session"                  # имя сессии без .session
+SESSION_FILE = os.path.join(DATA_DIR, f"{SESSION_NAME}.session")
+BANNED_FILE  = os.path.join(DATA_DIR, "banned.json")
+
+# Если /data недоступна — fallback на текущую директорию
+if not os.path.exists(DATA_DIR):
+    print(f"Директория {DATA_DIR} не найдена → используем текущую папку")
+    SESSION_FILE = f"{SESSION_NAME}.session"
+    BANNED_FILE = "data/banned.json"
 
 # ──────────────────────────────────────────────
-# Работа с файлом banned.json
+# Работа с banned.json
 # ──────────────────────────────────────────────
 
 def load_banned_phrases():
-    """Загружает список запрещённых фраз из JSON-файла"""
     if os.path.exists(BANNED_FILE):
         try:
             with open(BANNED_FILE, "r", encoding="utf-8") as f:
@@ -36,28 +46,32 @@ def load_banned_phrases():
                 if isinstance(data, list):
                     return data
                 else:
-                    print("banned.json содержит не список — загружаем пустой список")
+                    print(f"{BANNED_FILE} содержит не список → пустой")
                     return []
         except Exception as e:
-            print(f"Ошибка чтения banned.json: {e}")
+            print(f"Ошибка чтения {BANNED_FILE}: {e}")
             return []
     else:
-        print(f"Файл {BANNED_FILE} не найден — создаём пустой список")
+        print(f"Файл {BANNED_FILE} не найден → пустой список")
         return []
 
 def save_banned_phrases(phrases):
-    """Сохраняет список запрещённых фраз в JSON-файл"""
     try:
+        os.makedirs(os.path.dirname(BANNED_FILE), exist_ok=True)  # создаём /data если нужно
         with open(BANNED_FILE, "w", encoding="utf-8") as f:
             json.dump(phrases, f, ensure_ascii=False, indent=2)
         print(f"Сохранено {len(phrases)} запрещённых фраз в {BANNED_FILE}")
     except Exception as e:
-        print(f"Ошибка сохранения banned.json: {e}")
+        print(f"Ошибка сохранения {BANNED_FILE}: {e}")
 
 # Загружаем запрещённые фразы при старте
 BANNED_PHRASES = load_banned_phrases()
 
-client = TelegramClient("parser_session", API_ID, API_HASH)
+# ──────────────────────────────────────────────
+# Клиент Telethon с сессией в /data
+# ──────────────────────────────────────────────
+
+client = TelegramClient(SESSION_FILE, API_ID, API_HASH)
 
 # ──────────────────────────────────────────────
 # Функции очистки
@@ -67,24 +81,19 @@ def clean_text(text: str) -> str:
     if not text:
         return ""
 
-    # Убираем обычные http/https ссылки
     text = re.sub(r'https?://\S+', '', text)
 
-    # Убираем запрещённые фразы
     for phrase in BANNED_PHRASES:
         text = text.replace(phrase, '')
 
-    # Убираем конкретные фразы про Топор
     for phrase in REMOVE_PHRASES:
         text = text.replace(phrase, '')
 
-    # Убираем остатки пустых markdown-ссылок
     text = re.sub(r'\[\s*\]\s*\(\s*[^)]*\s*\)?', '', text)
     text = re.sub(r'\[\s*?\]\s*', '', text)
     text = re.sub(r'\(\s*?\)', '', text)
     text = text.replace('](', '').replace('([', '').replace('])', '')
 
-    # Нормализация пробелов
     text = re.sub(r'\s*\n\s*', '\n', text)
     text = re.sub(r'\s{2,}', ' ', text)
 
@@ -167,13 +176,14 @@ async def cmd_listban(event):
     await event.reply(f"Запрещённые фразы ({len(BANNED_PHRASES)}):\n{lines}")
 
 # ──────────────────────────────────────────────
-# Запуск11
+# Запуск
 # ──────────────────────────────────────────────
 
 async def main():
     await client.start()
     me = await client.get_me()
     print(f"Бот запущен: {me.first_name} (@{me.username or 'нет @'})")
+    print(f"Сессия: {SESSION_FILE}")
     print(f"Загружено {len(BANNED_PHRASES)} запрещённых фраз из {BANNED_FILE}")
     await client.run_until_disconnected()
 
