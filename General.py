@@ -3,32 +3,18 @@ import re
 import asyncio
 import json
 import os
+from config import API_ID, API_HASH, SOURCE_CHANNELS, TARGET_CHANNEL, REMOVE_PHRASES
 
 # ──────────────────────────────────────────────
-# Настройки
+# Директория данных
 # ──────────────────────────────────────────────
 
-API_ID = 24146111
-API_HASH = "dc7ef3f00ab268edd8fc8f46ec464456"
-
-SOURCE_CHANNELS = [-1001754252633]               # откуда парсим
-TARGET_CHANNEL = -1001916023629                  # куда постим
-
-# Фразы, которые полностью удаляем из поста
-REMOVE_PHRASES = [
-    "👉 Топор +18. Подписаться",
-    "👉 Топор Live. Подписаться",
-]
-
-# Директория данных в Amvera (монтируется как /data)
 DATA_DIR = "/data"
 
-# Пути к файлам внутри /data (или локально в текущей папке, если /data нет)
-SESSION_NAME = "parser_session"                  # имя сессии без .session
+SESSION_NAME = "parser_session"
 SESSION_FILE = os.path.join(DATA_DIR, f"{SESSION_NAME}.session")
 BANNED_FILE  = os.path.join(DATA_DIR, "banned.json")
 
-# Если /data недоступна — fallback на текущую директорию
 if not os.path.exists(DATA_DIR):
     print(f"Директория {DATA_DIR} не найдена → используем текущую папку")
     SESSION_FILE = f"{SESSION_NAME}.session"
@@ -57,18 +43,17 @@ def load_banned_phrases():
 
 def save_banned_phrases(phrases):
     try:
-        os.makedirs(os.path.dirname(BANNED_FILE), exist_ok=True)  # создаём /data если нужно
+        os.makedirs(os.path.dirname(BANNED_FILE), exist_ok=True)
         with open(BANNED_FILE, "w", encoding="utf-8") as f:
             json.dump(phrases, f, ensure_ascii=False, indent=2)
         print(f"Сохранено {len(phrases)} запрещённых фраз в {BANNED_FILE}")
     except Exception as e:
         print(f"Ошибка сохранения {BANNED_FILE}: {e}")
 
-# Загружаем запрещённые фразы при старте
 BANNED_PHRASES = load_banned_phrases()
 
 # ──────────────────────────────────────────────
-# Клиент Telethon с сессией в /data
+# Клиент Telethon
 # ──────────────────────────────────────────────
 
 client = TelegramClient(SESSION_FILE, API_ID, API_HASH)
@@ -80,23 +65,15 @@ client = TelegramClient(SESSION_FILE, API_ID, API_HASH)
 def clean_text(text: str) -> str:
     if not text:
         return ""
-
     text = re.sub(r'https?://\S+', '', text)
-
-    for phrase in BANNED_PHRASES:
+    for phrase in BANNED_PHRASES + REMOVE_PHRASES:
         text = text.replace(phrase, '')
-
-    for phrase in REMOVE_PHRASES:
-        text = text.replace(phrase, '')
-
     text = re.sub(r'\[\s*\]\s*\(\s*[^)]*\s*\)?', '', text)
     text = re.sub(r'\[\s*?\]\s*', '', text)
     text = re.sub(r'\(\s*?\)', '', text)
     text = text.replace('](', '').replace('([', '').replace('])', '')
-
     text = re.sub(r'\s*\n\s*', '\n', text)
     text = re.sub(r'\s{2,}', ' ', text)
-
     return text.strip()
 
 def is_banned(text: str) -> bool:
@@ -113,20 +90,14 @@ def is_banned(text: str) -> bool:
 async def handler(event):
     msg = event.message
     text = msg.text or ""
-
-    preview = text[:100].replace('\n', ' ').replace('\r', ' ')
-    print(f"[IN]  {preview}...")
-
+    print(f"[IN]  {text[:100].replace(chr(10), ' ')}...")
     if is_banned(text):
         print("     → пропущен (запрещённая фраза)")
         return
-
     text = clean_text(text)
-
     if not text and not msg.media:
         print("     → пропуск: пустой текст без медиа")
         return
-
     try:
         await client.send_message(
             TARGET_CHANNEL,
@@ -141,7 +112,7 @@ async def handler(event):
         print(f"     → ошибка: {str(e)}")
 
 # ──────────────────────────────────────────────
-# Команды управления запрещёнными фразами
+# Команды управления banned.json
 # ──────────────────────────────────────────────
 
 @client.on(events.NewMessage(pattern=r'^/ban\s+(.+)$'))
@@ -176,7 +147,7 @@ async def cmd_listban(event):
     await event.reply(f"Запрещённые фразы ({len(BANNED_PHRASES)}):\n{lines}")
 
 # ──────────────────────────────────────────────
-# Запуск1
+# Запуск
 # ──────────────────────────────────────────────
 
 async def main():
