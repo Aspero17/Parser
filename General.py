@@ -3,14 +3,34 @@ import re
 import asyncio
 import json
 import os
-from config import API_ID, API_HASH, SOURCE_CHANNELS, TARGET_CHANNEL, REMOVE_PHRASES
+import sys
+
+# ──────────────────────────────────────────────
+# Попытка загрузить секретный config из /data
+# ──────────────────────────────────────────────
+
+CONFIG_PATH = "/data/config.py"
+
+if os.path.exists(CONFIG_PATH):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("config", CONFIG_PATH)
+    config = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(config)
+
+    API_ID = config.API_ID
+    API_HASH = config.API_HASH
+    SOURCE_CHANNELS = config.SOURCE_CHANNELS
+    TARGET_CHANNEL = config.TARGET_CHANNEL
+    REMOVE_PHRASES = config.REMOVE_PHRASES
+else:
+    print(f"❌ Файл config.py не найден в {CONFIG_PATH}")
+    sys.exit(1)
 
 # ──────────────────────────────────────────────
 # Директория данных
 # ──────────────────────────────────────────────
 
 DATA_DIR = "/data"
-
 SESSION_NAME = "parser_session"
 SESSION_FILE = os.path.join(DATA_DIR, f"{SESSION_NAME}.session")
 BANNED_FILE  = os.path.join(DATA_DIR, "banned.json")
@@ -31,15 +51,9 @@ def load_banned_phrases():
                 data = json.load(f)
                 if isinstance(data, list):
                     return data
-                else:
-                    print(f"{BANNED_FILE} содержит не список → пустой")
-                    return []
         except Exception as e:
             print(f"Ошибка чтения {BANNED_FILE}: {e}")
-            return []
-    else:
-        print(f"Файл {BANNED_FILE} не найден → пустой список")
-        return []
+    return []
 
 def save_banned_phrases(phrases):
     try:
