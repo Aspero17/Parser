@@ -129,7 +129,7 @@ async def handler(event):
 # Команды управления banned.json
 # ──────────────────────────────────────────────
 
-@client.on(events.NewMessage(pattern=r'^/ban\s+(.+)$'))
+@client.on(events.NewMessage(pattern=r'^/asban\s+(.+)$'))
 async def cmd_ban(event):
     phrase = event.pattern_match.group(1).strip()
     if not phrase:
@@ -142,7 +142,7 @@ async def cmd_ban(event):
     save_banned_phrases(BANNED_PHRASES)
     await event.reply(f"✅ Добавлено в бан: `{phrase}`\nВсего запретов: {len(BANNED_PHRASES)}")
 
-@client.on(events.NewMessage(pattern=r'^/unban\s+(.+)$'))
+@client.on(events.NewMessage(pattern=r'^/asunban\s+(.+)$'))
 async def cmd_unban(event):
     phrase = event.pattern_match.group(1).strip()
     if phrase in BANNED_PHRASES:
@@ -152,7 +152,7 @@ async def cmd_unban(event):
     else:
         await event.reply("Не найдено в бан-листе")
 
-@client.on(events.NewMessage(pattern=r'^/listban$'))
+@client.on(events.NewMessage(pattern=r'^/aslistban$'))
 async def cmd_listban(event):
     if not BANNED_PHRASES:
         await event.reply("Бан-лист пуст")
